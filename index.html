@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Multi-Student Weekly Class Schedule</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+</head>
+<body class="bg-gray-50 p-6">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">schedmaster</h1>
+
+    <!-- Tabs Navigation -->
+    <div class="mb-4 items-center justify-center flex gap-4">
+      <button id="inputTabBtn" onclick="showTab('inputTab')" class="px-4 py-2 rounded transition-colors bg-blue-600 text-white mr-2">Schedule Input</button>
+      <button id="compareTabBtn" onclick="showTab('compareTab')" class="px-4 py-2 rounded transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300">Compare Schedules</button>
+    </div>
+
+    <!-- Tab Content -->
+    <div id="inputTab">
+      <!-- Student Selector -->
+      <div class="bg-white p-4 rounded-lg mb-6 flex flex-col items-start justify-center w-full max-w-md mx-auto shadow">
+        <div class="flex items-center gap-2 mb-2">
+          <label class="text-xs font-medium">Student</label>
+          <button onclick="addStudent()" class="px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-500 hover:text-white text-gray rounded">Add</button>
+          <button onclick="removeStudent()" class="px-2 py-0.5 text-xs bg-gray-100 hover:bg-red-500 hover:text-white text-gray rounded">Remove</button>
+        </div>
+        <select id="studentSelector" class="border p-2 rounded text-sm w-full" onchange="switchStudent()"></select>
+      </div>
+
+      <!-- Input Form -->
+      <div class="flex justify-center">
+        <div class="bg-white p-4 rounded-lg shadow mb-6 w-auto inline-block">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="text-xs font-medium block mb-1">Class Details</label>
+              <input type="text" id="className" placeholder="Class Name" class="p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-xs font-medium block mb-1">Section</label>
+              <input type="text" id="section" placeholder="Section" class="p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-xs font-medium block mb-1">Venue</label>
+              <input type="text" id="venue" placeholder="Venue" class="p-2 border rounded" />
+            </div>
+            <div>
+              <label class="text-xs font-medium block mb-1">Day</label>
+              <select id="day" class="p-2 border rounded">
+                <option disabled selected>Day</option>
+                <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+                <option>Thursday</option><option>Friday</option><option>Saturday</option>
+              </select>            
+            </div>
+            <div>
+              <label class="text-xs font-medium block mb-1">Time Start</label>
+              <select id="startTime" class="p-2 border rounded"></select>
+            </div>
+            <div>
+              <label class="text-xs font-medium block mb-1">Time End</label>
+              <select id="endTime" class="p-2 border rounded"></select>
+            </div>
+          </div>
+          <div class="mt-4 space-x-2 items-center justify-center flex">
+            <button onclick="addClass()" class="px-2 py-0.5 bg-blue-600 text-white text-xs rounded">Add Class</button>
+            <button onclick="clearSchedule()" class="px-2 py-0.5 bg-red-500 text-white text-xs rounded">Clear Schedule</button>
+            <button onclick="exportSchedule()" class="px-2 py-0.5 bg-green-600 text-white text-xs rounded">Export</button>
+            <label class="inline-block px-2 py-0.5 bg-yellow-600 text-white text-xs rounded cursor-pointer">
+              Import
+              <input type="file" id="importInput" accept=".json" class="hidden" onchange="importSchedule()" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Schedule Table -->
+      <div class="overflow-x-auto">
+        <table class="table-auto w-full border-collapse border border-gray-300 text-xs">
+          <thead>
+            <tr class="bg-gray-100 text-sm">
+              <th class="border p-2 w-24">Time</th>
+              <th class="border p-2">Monday</th>
+              <th class="border p-2">Tuesday</th>
+              <th class="border p-2">Wednesday</th>
+              <th class="border p-2">Thursday</th>
+              <th class="border p-2">Friday</th>
+              <th class="border p-2">Saturday</th>
+            </tr>
+          </thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Compare Students Tab -->
+    <div id="compareTab" style="display:none">
+      <div class="bg-white p-4 rounded-lg mb-6 w-full max-w-md mx-auto shadow flex flex-col items-center">
+        <label class="text-xs block mb-2">Select at least two people</label>
+        <div id="compareCheckboxes" class="flex flex-wrap justify-center gap-6 mb-3"></div>
+        <button onclick="compareStudents()" class="px-3 py-1 bg-yellow-500 text-white rounded">Compare</button>
+      </div>
+      <!-- Comparison Result -->
+      <div id="compareResult" class="mb-6 text-sm bg-white p-4 rounded shadow hidden"></div>
+    </div>
+  </div>
+
+  <script>
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const timeSlots = generateTimeSlots();
+    let currentStudent = "";
+
+    function deleteClass(clsToDelete) {
+        let schedule = getCurrentSchedule();
+        schedule = schedule.filter(cls =>
+            !(cls.name === clsToDelete.name &&
+            cls.section === clsToDelete.section &&
+            cls.day === clsToDelete.day &&
+            cls.start === clsToDelete.start &&
+            cls.end === clsToDelete.end)
+        );
+        saveCurrentSchedule(schedule);
+        renderSchedule();
+    }
+
+    function generateTimeSlots(start = 7, end = 19) {
+      const slots = [];
+      for (let h = start; h <= end; h++) {
+        for (let m = 0; m < 60; m += 30) {
+          if (h === end && m > 0) break; // don't go past 7:00PM
+          slots.push(formatTime(h, m));
+        }
+      }
+      return slots;
+    }
+
+    function formatTime(hour, min) {
+      const period = hour >= 12 ? "PM" : "AM";
+      const h12 = hour % 12 === 0 ? 12 : hour % 12;
+      const mStr = min.toString().padStart(2, '0');
+      return `${h12}:${mStr}${period}`;
+    }
+
+    function populateTimeDropdowns() {
+      const startSelect = document.getElementById('startTime');
+      const endSelect = document.getElementById('endTime');
+      timeSlots.forEach(slot => {
+        startSelect.add(new Option(slot, slot));
+        endSelect.add(new Option(slot, slot));
+      });
+    }
+
+    function getStudentList() {
+      return JSON.parse(localStorage.getItem('students') || '[]');
+    }
+
+    function saveStudentList(list) {
+      localStorage.setItem('students', JSON.stringify(list));
+    }
+
+    function addStudent() {
+      const name = prompt("Enter student name:");
+      if (!name) return;
+      const students = getStudentList();
+      if (!students.includes(name)) {
+        students.push(name);
+        saveStudentList(students);
+        updateStudentSelectors();
+        document.getElementById('studentSelector').value = name;
+        switchStudent();
+      }
+    }
+
+    function removeStudent() {
+      const name = document.getElementById('studentSelector').value;
+      if (!name) return;
+      const confirmed = confirm(`Are you sure you want to remove ${name} and their schedule?`);
+      if (!confirmed) return;
+      const students = getStudentList().filter(student => student !== name);
+      saveStudentList(students);
+      localStorage.removeItem(getScheduleKey(name));
+      updateStudentSelectors();
+      currentStudent = students.length > 0 ? students[0] : '';
+      renderSchedule();
+    }
+
+    function updateStudentSelectors() {
+      const students = getStudentList();
+      const selector = document.getElementById('studentSelector');
+      // Remove compare1/compare2 selects, replaced with checkboxes
+      selector.innerHTML = "";
+      students.forEach(name => {
+        selector.add(new Option(name, name));
+      });
+
+      if (!currentStudent && students.length > 0) {
+        currentStudent = students[0];
+        selector.value = currentStudent;
+        switchStudent();
+      }
+
+      // Add checkboxes for compare students
+      const checkboxContainer = document.getElementById('compareCheckboxes');
+      checkboxContainer.innerHTML = "";
+      students.forEach(name => {
+        const label = document.createElement("label");
+        label.className = "inline-flex items-center";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = name;
+        checkbox.className = "mr-1";
+        label.appendChild(checkbox);
+        label.append(name);
+        checkboxContainer.appendChild(label);
+      });
+    }
+
+    function getScheduleKey(name = currentStudent) {
+      return `schedule_${name}`;
+    }
+
+    function switchStudent() {
+      currentStudent = document.getElementById('studentSelector').value;
+      renderSchedule();
+    }
+
+    function getCurrentSchedule() {
+      return JSON.parse(localStorage.getItem(getScheduleKey()) || '[]');
+    }
+
+    function saveCurrentSchedule(data) {
+      localStorage.setItem(getScheduleKey(), JSON.stringify(data));
+    }
+
+function generateScheduleTable() {
+  const body = document.getElementById('scheduleBody');
+  body.innerHTML = "";
+
+  for (let index = 0; index < timeSlots.length - 1; index++) {
+    const slot = timeSlots[index];
+    const endSlot = timeSlots[index + 1];
+
+    const row = document.createElement('tr');
+    const timeCell = document.createElement('td');
+    timeCell.className = "border p-2 font-medium";
+    timeCell.textContent = `${slot} - ${endSlot}`;
+    row.appendChild(timeCell);
+
+    days.forEach(day => {
+      const cell = document.createElement('td');
+      cell.className = "border p-2 align-top";
+      cell.dataset.day = day;
+      cell.dataset.time = slot;
+      row.appendChild(cell);
+    });
+
+    body.appendChild(row);
+  }
+}
+
+    function addClass() {
+      const name = document.getElementById('className').value.trim();
+      const section = document.getElementById('section').value.trim();
+      const venue = document.getElementById('venue').value.trim();
+      const day = document.getElementById('day').value;
+      const start = document.getElementById('startTime').value;
+      const end = document.getElementById('endTime').value;
+
+      if (!name || !section || !venue || !day || !start || !end) {
+        alert("Please fill in all fields.");
+        return;
+      }
+
+      const startIndex = timeSlots.indexOf(start);
+      const endIndex = timeSlots.indexOf(end);
+      if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+        alert("Invalid time range.");
+        return;
+      }
+
+      const classData = { name, section, venue, day, start, end };
+      const schedule = getCurrentSchedule();
+      schedule.push(classData);
+      saveCurrentSchedule(schedule);
+
+      renderSchedule();
+    }
+
+function renderSchedule() {
+  generateScheduleTable();
+  const schedule = getCurrentSchedule();
+  const cellSpanned = {};
+
+  schedule.forEach(cls => {
+    const startIndex = timeSlots.indexOf(cls.start);
+    const endIndex = timeSlots.indexOf(cls.end);
+
+    const key = `${cls.day}-${timeSlots[startIndex]}`;
+    const lastKey = `${cls.day}-${timeSlots[endIndex - 1]}`;
+
+    if (!cellSpanned[key]) {
+      const firstCell = document.querySelector(`td[data-day="${cls.day}"][data-time="${timeSlots[startIndex]}"]`);
+      if (firstCell) {
+        firstCell.rowSpan = endIndex - startIndex;
+        const sampleRow = document.querySelector('#scheduleBody tr');
+        const rowHeight = sampleRow ? sampleRow.offsetHeight : 30;
+        const totalHeight = (endIndex - startIndex) * rowHeight;
+
+        firstCell.innerHTML = `
+          <div style="height: ${totalHeight}px" class="bg-green-100 p-1 rounded mb-1 w-full h-full flex flex-col justify-center items-center text-center">
+            <div>
+              <strong>${cls.name} ${cls.section}</strong><br>
+              <span class="text-xs">${cls.start} - ${cls.end}</span><br>
+              <span class="text-xs">📍 ${cls.venue}</span>
+            </div>
+            <button onclick='deleteClass(${JSON.stringify(cls)})' class="mt-2 px-2 py-1 bg-red-500 text-white text-xs rounded">Delete</button>
+          </div>
+        `;
+
+        for (let i = startIndex + 1; i < endIndex; i++) {
+          const hiddenCell = document.querySelector(`td[data-day="${cls.day}"][data-time="${timeSlots[i]}"]`);
+          if (hiddenCell) hiddenCell.remove();
+          cellSpanned[`${cls.day}-${timeSlots[i]}`] = true;
+        }
+
+        cellSpanned[key] = true;
+        cellSpanned[lastKey] = true;
+      }
+    }
+  });
+
+  document.getElementById('compareResult').classList.add('hidden');
+}
+
+    function clearSchedule() {
+      if (confirm("Clear schedule for this student?")) {
+        localStorage.removeItem(getScheduleKey());
+        renderSchedule();
+      }
+    }
+
+    function exportSchedule() {
+      const schedule = getCurrentSchedule();
+      const blob = new Blob([JSON.stringify(schedule, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `schedule_${currentStudent}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importSchedule() {
+      const fileInput = document.getElementById('importInput');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (!Array.isArray(imported)) throw new Error("Invalid file format");
+
+          const valid = imported.every(cls =>
+            cls.name && cls.section && cls.venue && cls.day &&
+            timeSlots.includes(cls.start) && timeSlots.includes(cls.end)
+          );
+          if (!valid) throw new Error("Some entries are invalid");
+
+          saveCurrentSchedule(imported);
+          renderSchedule();
+          alert("Schedule imported successfully.");
+        } catch (err) {
+          alert("Failed to import: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function compareStudents() {
+      const checkboxes = document.querySelectorAll('#compareCheckboxes input[type="checkbox"]:checked');
+      const selected = Array.from(checkboxes).map(cb => cb.value);
+      if (selected.length < 2) return alert("Select at least two students.");
+
+      // Get all selected students' schedules
+      const schedules = selected.map(name =>
+        JSON.parse(localStorage.getItem(getScheduleKey(name)) || '[]')
+      );
+
+      // Shared classes = intersection of all schedules (by class name, section, day, start, end)
+      let sharedClasses = schedules[0];
+      for (let i = 1; i < schedules.length; i++) {
+        sharedClasses = sharedClasses.filter(cls1 =>
+          schedules[i].some(cls2 =>
+            cls1.name === cls2.name &&
+            cls1.section === cls2.section &&
+            cls1.day === cls2.day &&
+            cls1.start === cls2.start &&
+            cls1.end === cls2.end
+          )
+        );
+      }
+
+      // For vacant slots: find all slots not occupied by ANY of the students (intersection of free slots)
+      // First, for each student, build a Set of occupied slots
+      const occupiedSets = schedules.map(sched => {
+        const occ = new Set();
+        sched.forEach(cls => {
+          const si = timeSlots.indexOf(cls.start);
+          const ei = timeSlots.indexOf(cls.end);
+          for (let i = si; i < ei; i++) {
+            occ.add(`${cls.day}-${timeSlots[i]}`);
+          }
+        });
+        return occ;
+      });
+
+      // For each day and slot, only include if ALL students are free at that slot
+      const sharedFree = [];
+      days.forEach(day => {
+        timeSlots.forEach(slot => {
+          const key = `${day}-${slot}`;
+          if (occupiedSets.every(occ => !occ.has(key))) {
+            sharedFree.push(key);
+          }
+        });
+      });
+
+      const resDiv = document.getElementById('compareResult');
+      resDiv.innerHTML = `
+          <h2 class="text-lg font-semibold mb-2">📘 Shared Classes:</h2>
+          ${
+            sharedClasses.length > 0
+            ? `
+                <table class="table-auto w-full mb-4 border border-gray-300 text-xs">
+                <thead class="bg-gray-100">
+                    <tr>
+                    <th class="border px-2 py-1">Class</th>
+                    <th class="border px-2 py-1">Section</th>
+                    <th class="border px-2 py-1">Days</th>
+                    <th class="border px-2 py-1">Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${(() => {
+                      const grouped = {};
+                      sharedClasses.forEach(cls => {
+                        const key = `${cls.name}|${cls.section}|${cls.start}|${cls.end}`;
+                        if (!grouped[key]) {
+                          grouped[key] = { name: cls.name, section: cls.section, start: cls.start, end: cls.end, days: [] };
+                        }
+                        grouped[key].days.push(cls.day);
+                      });
+                      return Object.values(grouped).map(cls => `
+                        <tr>
+                          <td class="border px-2 py-1">${cls.name}</td>
+                          <td class="border px-2 py-1">${cls.section}</td>
+                          <td class="border px-2 py-1">${cls.days.join(', ')}</td>
+                          <td class="border px-2 py-1">${cls.start}–${cls.end}</td>
+                        </tr>
+                      `).join('');
+                    })()}
+                </tbody>
+                </table>`
+            : '<p class="mb-4">None</p>'
+          }
+
+          <h2 class="text-lg font-semibold mb-2">🕒 Common Vacant Time Slots:</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            ${
+              (() => {
+                // Merge sharedFree into ranges per day
+                const merged = [];
+                let currentDay = null, start = null, prevIndex = -2;
+                sharedFree.forEach((key, idx) => {
+                  const [day, time] = key.split("-");
+                  const index = timeSlots.indexOf(time);
+                  if (day === currentDay && index === prevIndex + 1) {
+                    prevIndex = index;
+                  } else {
+                    if (currentDay !== null) {
+                      merged.push({ day: currentDay, start, end: timeSlots[prevIndex] });
+                    }
+                    currentDay = day;
+                    start = time;
+                    prevIndex = index;
+                  }
+                  if (idx === sharedFree.length - 1) {
+                    merged.push({ day: currentDay, start, end: timeSlots[prevIndex] });
+                  }
+                });
+                return days.map(day => {
+                  const dailyVacants = merged.filter(entry => entry.day === day);
+                  if (dailyVacants.length === 0) return '';
+                  return `
+                    <div class="border rounded shadow p-2">
+                      <h3 class="font-semibold text-center text-sm mb-2">${day}</h3>
+                      <table class="table-auto w-full border border-gray-300 text-xs">
+                        <thead class="bg-gray-100">
+                          <tr>
+                            <th class="border px-2 py-1">Times Available</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${dailyVacants.map(({ start, end }) => `
+                            <tr>
+                              <td class="border px-2 py-1">${start} - ${end}</td>
+                            </tr>`).join("")}
+                        </tbody>
+                      </table>
+                    </div>
+                  `;
+                }).join('');
+              })()
+            }
+          </div>
+          `;
+      resDiv.classList.remove('hidden');
+    }
+
+    // Init
+    populateTimeDropdowns();
+    updateStudentSelectors();
+    renderSchedule();
+    function showTab(tabId) {
+      const inputBtn = document.getElementById('inputTabBtn');
+      const compareBtn = document.getElementById('compareTabBtn');
+
+      document.getElementById('inputTab').style.display = tabId === 'inputTab' ? 'block' : 'none';
+      document.getElementById('compareTab').style.display = tabId === 'compareTab' ? 'block' : 'none';
+
+      if (tabId === 'inputTab') {
+        inputBtn.className = "px-4 py-2 rounded bg-blue-600 text-white";
+        compareBtn.className = "px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300";
+      } else {
+        compareBtn.className = "px-4 py-2 rounded bg-blue-600 text-white";
+        inputBtn.className = "px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300";
+      }
+    }
+  </script>
+</body>
+</html>
