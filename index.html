@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>schedmaster</title>
+  <title>Multi-Student Weekly Class Schedule</title>
   <link rel="stylesheet" href="style.css" />
 </head>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -314,7 +314,10 @@ function renderSchedule() {
               <span class="text-xs">${cls.start} - ${cls.end}</span><br>
               <span class="text-xs">📍 ${cls.venue}</span>
             </div>
-            <button onclick='deleteClass(${JSON.stringify(cls)})' class="mt-2 px-2 py-1 bg-red-500 text-white text-xs rounded">Delete</button>
+            <div>
+              <button onclick='editClass(${JSON.stringify(cls)})' class="mt-1 px-2 py-1 bg-blue-500 text-white text-xs rounded">Edit</button>
+              <button onclick='deleteClass(${JSON.stringify(cls)})' class="mt-2 px-2 py-1 bg-red-500 text-white text-xs rounded">Delete</button>
+            </div>
           </div>
         `;
 
@@ -523,6 +526,7 @@ function renderSchedule() {
     populateTimeDropdowns();
     updateStudentSelectors();
     renderSchedule();
+
     function showTab(tabId) {
       const inputBtn = document.getElementById('inputTabBtn');
       const compareBtn = document.getElementById('compareTabBtn');
@@ -537,6 +541,19 @@ function renderSchedule() {
         compareBtn.className = "px-4 py-2 rounded bg-blue-600 text-white";
         inputBtn.className = "px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300";
       }
+    }
+
+    function editClass(clsToEdit) {
+      document.getElementById('className').value = clsToEdit.name;
+      document.getElementById('section').value = clsToEdit.section;
+      document.getElementById('venue').value = clsToEdit.venue;
+      document.getElementById('day').value = clsToEdit.day;
+      document.getElementById('startTime').value = clsToEdit.start;
+      document.getElementById('endTime').value = clsToEdit.end;
+
+      // Delete the original class entry so the edited one can be added fresh
+      deleteClass(clsToEdit);
+      showTab('inputTab');
     }
   </script>
 </body>
