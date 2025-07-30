@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Multi-Student Weekly Class Schedule</title>
+  <title>schedmaster</title>
   <link rel="stylesheet" href="style.css" />
 </head>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +14,7 @@
 
     <!-- Tabs Navigation -->
     <div class="mb-4 items-center justify-center flex gap-4">
-      <button id="inputTabBtn" onclick="showTab('inputTab')" class="px-4 py-2 rounded transition-colors bg-blue-600 text-white mr-2">Schedule Input</button>
+      <button id="inputTabBtn" onclick="showTab('inputTab')" class="px-4 py-2 rounded transition-colors bg-blue-600 text-white mr-2">Input Schedule</button>
       <button id="compareTabBtn" onclick="showTab('compareTab')" class="px-4 py-2 rounded transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300">Compare Schedules</button>
     </div>
 
@@ -23,7 +23,7 @@
       <!-- Student Selector -->
       <div class="bg-white p-4 rounded-lg mb-6 flex flex-col items-start justify-center w-full max-w-md mx-auto shadow">
         <div class="flex items-center gap-2 mb-2">
-          <label class="text-xs font-medium">Student</label>
+          <label class="text-xs font-medium">Select Schedule</label>
           <button onclick="addStudent()" class="px-2 py-0.5 text-xs bg-gray-100 hover:bg-gray-500 hover:text-white text-gray rounded">Add</button>
           <button onclick="removeStudent()" class="px-2 py-0.5 text-xs bg-gray-100 hover:bg-red-500 hover:text-white text-gray rounded">Remove</button>
         </div>
