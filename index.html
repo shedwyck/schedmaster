@@ -384,7 +384,7 @@ function renderSchedule() {
     function compareStudents() {
       const checkboxes = document.querySelectorAll('#compareCheckboxes input[type="checkbox"]:checked');
       const selected = Array.from(checkboxes).map(cb => cb.value);
-      if (selected.length < 2) return alert("Select at least two students.");
+      if (selected.length < 2) return alert("Select at least two people.");
 
       // Get all selected students' schedules
       const schedules = selected.map(name =>
