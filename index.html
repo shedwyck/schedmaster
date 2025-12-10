@@ -62,6 +62,19 @@
               <label class="text-xs font-medium block mb-1">Time End</label>
               <select id="endTime" class="p-2 border rounded"></select>
             </div>
+            <div>
+              <label class="text-xs font-medium block mb-1">Color</label>
+              <select id="color" class="p-2 border rounded">
+                <option value="#9CA3AF" selected>Gray (default)</option>
+                <option value="#EF4444">Red</option>
+                <option value="#F97316">Orange</option>
+                <option value="#F59E0B">Yellow</option>
+                <option value="#10B981">Green</option>
+                <option value="#3B82F6">Blue</option>
+                <option value="#6366F1">Indigo</option>
+                <option value="#A78BFA">Violet</option>
+              </select>
+            </div>
           </div>
           <div class="mt-4 space-x-2 items-center justify-center flex">
             <button onclick="addClass()" class="px-2 py-0.5 bg-blue-600 text-white text-xs rounded">Add Class</button>
@@ -111,6 +124,19 @@
     const timeSlots = generateTimeSlots();
     let currentStudent = "";
 
+    // helper: return '#000' or '#fff' for readable contrast on a given hex color
+    function getTextColor(hex) {
+      if (!hex) return '#000';
+      const h = hex.replace('#', '');
+      const bigint = parseInt(h.length === 3 ? h.split('').map(c => c+c).join('') : h, 16);
+      const r = (bigint >> 16) & 255;
+      const g = (bigint >> 8) & 255;
+      const b = bigint & 255;
+      // perceptual luminance
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness > 128 ? '#000' : '#fff';
+    }
+    
     function deleteClass(clsToDelete) {
         let schedule = getCurrentSchedule();
         schedule = schedule.filter(cls =>
@@ -266,6 +292,7 @@ function generateScheduleTable() {
       const day = document.getElementById('day').value;
       const start = document.getElementById('startTime').value;
       const end = document.getElementById('endTime').value;
+     const color = document.getElementById('color').value || '#9CA3AF';
 
       if (!name || !section || !venue || !day || !start || !end) {
         alert("Please fill in all fields.");
@@ -279,7 +306,7 @@ function generateScheduleTable() {
         return;
       }
 
-      const classData = { name, section, venue, day, start, end };
+      const classData = { name, section, venue, day, start, end, color };
       const schedule = getCurrentSchedule();
       schedule.push(classData);
       saveCurrentSchedule(schedule);
@@ -293,48 +320,51 @@ function renderSchedule() {
   const cellSpanned = {};
 
   schedule.forEach(cls => {
-    const startIndex = timeSlots.indexOf(cls.start);
-    const endIndex = timeSlots.indexOf(cls.end);
+    // ensure older entries have a color
+    if (!cls.color) cls.color = '#9CA3AF';
+        const startIndex = timeSlots.indexOf(cls.start);
+        const endIndex = timeSlots.indexOf(cls.end);
 
-    const key = `${cls.day}-${timeSlots[startIndex]}`;
-    const lastKey = `${cls.day}-${timeSlots[endIndex - 1]}`;
+        const key = `${cls.day}-${timeSlots[startIndex]}`;
+        const lastKey = `${cls.day}-${timeSlots[endIndex - 1]}`;
 
-    if (!cellSpanned[key]) {
-      const firstCell = document.querySelector(`td[data-day="${cls.day}"][data-time="${timeSlots[startIndex]}"]`);
-      if (firstCell) {
-        firstCell.rowSpan = endIndex - startIndex;
-        const sampleRow = document.querySelector('#scheduleBody tr');
-        const rowHeight = sampleRow ? sampleRow.offsetHeight : 30;
-        const totalHeight = (endIndex - startIndex) * rowHeight;
+        if (!cellSpanned[key]) {
+          const firstCell = document.querySelector(`td[data-day="${cls.day}"][data-time="${timeSlots[startIndex]}"]`);
+          if (firstCell) {
+            firstCell.rowSpan = endIndex - startIndex;
+            const sampleRow = document.querySelector('#scheduleBody tr');
+            const rowHeight = sampleRow ? sampleRow.offsetHeight : 30;
+            const totalHeight = (endIndex - startIndex) * rowHeight;
+            const textColor = getTextColor(cls.color);
 
-        firstCell.innerHTML = `
-          <div style="height: ${totalHeight}px" class="bg-gray-200 p-1 rounded mb-1 w-full h-full flex flex-col justify-center items-center text-center">
+            firstCell.innerHTML = `
+          <div style="height: ${totalHeight}px; background-color: ${cls.color}; color: ${textColor}; padding:0.25rem; border-radius:0.375rem; margin-bottom:0.25rem; width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
             <div>
-              <strong>${cls.name} ${cls.section}</strong><br>
-              <span class="text-xs">${cls.start} - ${cls.end}</span><br>
-              <span class="text-xs">📍 ${cls.venue}</span>
+              <strong style="display:block">${cls.name} ${cls.section}</strong>
+              <span style="font-size:0.75rem; display:block">${cls.start} - ${cls.end}</span>
+              <span style="font-size:0.75rem; display:block">📍 ${cls.venue}</span>
             </div>
-            <div>
-              <button onclick='editClass(${JSON.stringify(cls)})' class="mt-1 px-2 py-1 bg-blue-500 text-white text-xs rounded">Edit</button>
-              <button onclick='deleteClass(${JSON.stringify(cls)})' class="mt-2 px-2 py-1 bg-red-500 text-white text-xs rounded">Delete</button>
+            <div style="margin-top:0.25rem; display:flex; gap:0.25rem;">
+              <button onclick='editClass(${JSON.stringify(cls)})' style="padding:0.25rem 0.5rem; background:#2563EB; color:#fff; font-size:0.75rem; border-radius:0.25rem; border:none;">Edit</button>
+              <button onclick='deleteClass(${JSON.stringify(cls)})' style="padding:0.25rem 0.5rem; background:#DC2626; color:#fff; font-size:0.75rem; border-radius:0.25rem; border:none;">Delete</button>
             </div>
           </div>
-        `;
+             `;
 
-        for (let i = startIndex + 1; i < endIndex; i++) {
-          const hiddenCell = document.querySelector(`td[data-day="${cls.day}"][data-time="${timeSlots[i]}"]`);
-          if (hiddenCell) hiddenCell.remove();
-          cellSpanned[`${cls.day}-${timeSlots[i]}`] = true;
+            for (let i = startIndex + 1; i < endIndex; i++) {
+              const hiddenCell = document.querySelector(`td[data-day="${cls.day}"][data-time="${timeSlots[i]}"]`);
+              if (hiddenCell) hiddenCell.remove();
+              cellSpanned[`${cls.day}-${timeSlots[i]}`] = true;
+            }
+
+            cellSpanned[key] = true;
+            cellSpanned[lastKey] = true;
+          }
         }
+      });
 
-        cellSpanned[key] = true;
-        cellSpanned[lastKey] = true;
-      }
+      document.getElementById('compareResult').classList.add('hidden');
     }
-  });
-
-  document.getElementById('compareResult').classList.add('hidden');
-}
 
     function clearSchedule() {
       if (confirm("Clear schedule for this student?")) {
@@ -371,6 +401,11 @@ function renderSchedule() {
           );
           if (!valid) throw new Error("Some entries are invalid");
 
+          // Ensure color exists on imported entries (default to gray)
+          imported.forEach(cls => {
+            if (!cls.color) cls.color = '#9CA3AF';
+          });
++
           saveCurrentSchedule(imported);
           renderSchedule();
           alert("Schedule imported successfully.");
@@ -550,6 +585,7 @@ function renderSchedule() {
       document.getElementById('day').value = clsToEdit.day;
       document.getElementById('startTime').value = clsToEdit.start;
       document.getElementById('endTime').value = clsToEdit.end;
+      document.getElementById('color').value = clsToEdit.color || '#9CA3AF';
 
       // Delete the original class entry so the edited one can be added fresh
       deleteClass(clsToEdit);
